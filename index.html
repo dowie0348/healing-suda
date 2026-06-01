@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우리 반 힐링수다날</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background-color: #f0f8ff; text-align: center; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { color: #4CAF50; font-size: 32px; }
+        .btn { padding: 15px 30px; font-size: 20px; margin: 10px; border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s; font-weight: bold; }
+        .btn:hover { transform: scale(1.05); }
+        .btn-heal-report { background-color: #FF9800; color: white; }
+        .btn-heal-king { background-color: #E91E63; color: white; }
+        .btn-think { background-color: #03A9F4; color: white; }
+        .btn-admin { background-color: #607D8B; color: white; font-size: 16px; padding: 10px 20px; }
+        .btn-back { background-color: #9e9e9e; color: white; margin-top: 30px; }
+        .btn-submit { background-color: #4CAF50; color: white; }
+        .hidden { display: none; }
+        .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; margin-top: 30px; }
+        .btn-student { background-color: #FFF8E1; border: 2px solid #FFC107; color: #333; padding: 15px; font-size: 18px; border-radius: 10px; cursor: pointer; }
+        .btn-student:hover { background-color: #FFECB3; }
+        .admin-controls { margin-top: 40px; padding-top: 20px; border-top: 2px dashed #ccc; }
+        select, input[type="password"] { padding: 10px; font-size: 16px; margin: 10px; border-radius: 8px; border: 1px solid #ccc; }
+        #ceremony-page { background-color: #FFFDE7; border: 5px solid #FFD600; padding: 50px 20px; border-radius: 20px; }
+        .winner-card { background: white; padding: 20px; margin: 20px auto; width: 60%; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .winner-title { font-size: 24px; color: #555; }
+        .winner-name { font-size: 48px; font-weight: bold; margin-top: 10px; }
+        .c-report { color: #FF9800; }
+        .c-king { color: #E91E63; }
+        .c-think { color: #03A9F4; }
+        .chart-container { position: relative; height:40vh; width:100%; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="main-page">
+        <h1>✨ 힐링수다날 ✨</h1>
+        <p>우리 반의 따뜻한 마음과 생각을 나누어 보아요!</p>
+        <div style="margin: 40px 0;">
+            <button class="btn btn-heal-report" onclick="openStudentList('힐름보')">🔍 힐름보 추천</button>
+            <button class="btn btn-heal-king" onclick="openStudentList('힐링왕')">💖 힐링왕 추천</button>
+            <button class="btn btn-think" onclick="openStudentList('생각왕')">📚 생각왕 추천</button>
+        </div>
+        <div class="admin-controls">
+            <p><strong>[ 교사 전용 메뉴 ]</strong></p>
+            <button class="btn btn-admin" onclick="openAdminPassword()">📊 데이터 보기</button>
+            <button class="btn btn-admin" onclick="openAwardSelection()">🏆 시상식 하기</button>
+            <button class="btn btn-admin" onclick="nextMonth()">🔄 다음 달 초기화</button>
+        </div>
+    </div>
+
+    <div id="student-list-page" class="hidden">
+        <h2 id="selection-title"></h2>
+        <p>추천할 친구를 선택해주세요!</p>
+        <div class="student-grid" id="student-grid"></div>
+        <button class="btn btn-back" onclick="showPage('main-page')">돌아가기</button>
+    </div>
+
+    <div id="data-page" class="hidden">
+        <h2>📊 월별 데이터 확인</h2>
+        <select id="month-selector" onchange="renderChart()"></select>
+        <div class="chart-container">
+            <canvas id="myChart"></canvas>
+        </div>
+        <button class="btn btn-back" onclick="showPage('main-page')">돌아가기</button>
+    </div>
+
+    <div id="award-setup-page" class="hidden">
+        <h2>🏆 시상식 준비</h2>
+        <div><label>🔍 힐름보: </label><select id="select-report"></select></div>
+        <div><label>💖 힐링왕: </label><select id="select-king"></select></div>
+        <div><label>📚 생각왕: </label><select id="select-think"></select></div>
+        <br>
+        <button class="btn btn-submit" onclick="startCeremony()">🎉 시상식 열기!</button>
+        <button class="btn btn-back" onclick="showPage('main-page')">취소</button>
+    </div>
+
+    <div id="ceremony-page" class="hidden">
+        <h1>🎉 이달의 주인공 🎉</h1>
+        <div class="winner-card"><div class="winner-title">좋은 모습을 가장 많이 찾아준</div><div class="winner-title">🔍 <strong>힐름보</strong></div><div class="winner-name c-report" id="winner-report"></div></div>
+        <div class="winner-card"><div class="winner-title">따뜻한 마음을 가장 많이 나눈</div><div class="winner-title">💖 <strong>힐링왕</strong></div><div class="winner-name c-king" id="winner-king"></div></div>
+        <div class="winner-card"><div class="winner-title">책으로 우리 반의 생각을 키운</div><div class="winner-title">📚 <strong>생각왕</strong></div><div class="winner-name c-think" id="winner-think"></div></div>
+        <button class="btn btn-back" onclick="showPage('main-page')">메인으로 돌아가기</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // ★ 파이어베이스 설정값 붙여넣는 곳 ★
+    // 아래 괄호 {} 안의 내용을 2단계에서 복사한 코드로 교체하세요!
+    const firebaseConfig = {
+apiKey: "AIzaSyCniqJoax8n5owLR3aZ352HlDX-oxQ87pk",
+  authDomain: "healing-263grade1.firebaseapp.com",
+  databaseURL: "https://healing-263grade1-default-rtdb.firebaseio.com",
+  projectId: "healing-263grade1",
+  storageBucket: "healing-263grade1.firebasestorage.app",
+  messagingSenderId: "40388247841",
+  appId: "1:40388247841:web:a2b4486be814e49f513e60"
+    };
+    // ==========================================
+
+    // 파이어베이스 초기화
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // 기본 설정
+    const students = [
+        '김주이', '김지윤', '김하늘', '박시현', '오하솔', '이목운', 
+        '장해린', '정다솜', '한세희', '김가람', '원이령', '이민욱', 
+        '이서후', '이세율', '이지완', '정선우', '정하준', '최지원'
+    ];
+    const TEACHER_PASSWORD = '1004';
+    
+    let currentCategory = '';
+    let currentMonth = localStorage.getItem('healingCurrentMonth') || getYearMonth();
+    let chartInstance = null;
+    let globalData = {}; // 서버에서 불러온 데이터를 저장할 변수
+
+    function getYearMonth() {
+        const d = new Date();
+        return `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
+    }
+
+    // 서버(Firebase) 실시간 데이터 연동
+    database.ref('healingData').on('value', (snapshot) => {
+        if (snapshot.exists()) {
+            globalData = snapshot.val();
+        } else {
+            globalData = {};
+        }
+        checkMonthDataExists(currentMonth);
+        
+        // 데이터 보기 창이 열려있다면 그래프 실시간 업데이트
+        if(!document.getElementById('data-page').classList.contains('hidden')) {
+            renderChart();
+        }
+    });
+
+    // 해당 달의 데이터 구조가 없으면 생성하여 서버에 저장
+    function checkMonthDataExists(month) {
+        let updated = false;
+        if (!globalData[month]) {
+            globalData[month] = { '힐름보': {}, '힐링왕': {}, '생각왕': {} };
+            updated = true;
+        }
+        students.forEach(s => {
+            if(globalData[month]['힐름보'][s] === undefined) {
+                globalData[month]['힐름보'][s] = 0;
+                globalData[month]['힐링왕'][s] = 0;
+                globalData[month]['생각왕'][s] = 0;
+                updated = true;
+            }
+        });
+        if (updated) {
+            database.ref('healingData').set(globalData);
+        }
+    }
+
+    function showPage(pageId) {
+        document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+        document.getElementById(pageId).classList.remove('hidden');
+    }
+
+    function openStudentList(category) {
+        currentCategory = category;
+        document.getElementById('selection-title').innerText = `[${category}] 추천하기`;
+        const grid = document.getElementById('student-grid');
+        grid.innerHTML = '';
+        
+        students.forEach(student => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-student';
+            btn.innerText = student;
+            btn.onclick = () => addCount(student);
+            grid.appendChild(btn);
+        });
+        showPage('student-list-page');
+    }
+
+    // 서버(Firebase) 데이터 횟수 1 증가
+    function addCount(student) {
+        const currentCount = globalData[currentMonth][currentCategory][student] || 0;
+        database.ref(`healingData/${currentMonth}/${currentCategory}/${student}`).set(currentCount + 1)
+            .then(() => {
+                alert(`${student} 학생에게 ${currentCategory} 추천이 완료되었습니다!`);
+                showPage('main-page');
+            });
+    }
+
+    function openAdminPassword() {
+        const pwd = prompt("선생님 비밀번호를 입력하세요:");
+        if (pwd === TEACHER_PASSWORD) {
+            setupDataPage();
+            showPage('data-page');
+        } else if (pwd !== null) {
+            alert("비밀번호가 틀렸습니다.");
+        }
+    }
+
+    function setupDataPage() {
+        const selector = document.getElementById('month-selector');
+        selector.innerHTML = '';
+        Object.keys(globalData).reverse().forEach(month => {
+            const option = document.createElement('option');
+            option.value = month;
+            option.innerText = month;
+            if (month === currentMonth) option.selected = true;
+            selector.appendChild(option);
+        });
+        renderChart();
+    }
+
+    function renderChart() {
+        const selectedMonth = document.getElementById('month-selector').value;
+        const data = globalData[selectedMonth];
+        if(!data) return;
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: students,
+                datasets: [
+                    { label: '힐름보', backgroundColor: '#FF9800', data: students.map(s => data['힐름보'][s] || 0) },
+                    { label: '힐링왕', backgroundColor: '#E91E63', data: students.map(s => data['힐링왕'][s] || 0) },
+                    { label: '생각왕', backgroundColor: '#03A9F4', data: students.map(s => data['생각왕'][s] || 0) }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+    }
+
+    function openAwardSelection() {
+        const pwd = prompt("선생님 비밀번호를 입력하세요 (시상식 준비):");
+        if (pwd === TEACHER_PASSWORD) {
+            ['report', 'king', 'think'].forEach(id => {
+                const select = document.getElementById(`select-${id}`);
+                select.innerHTML = '';
+                students.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.innerText = s;
+                    select.appendChild(opt);
+                });
+            });
+            showPage('award-setup-page');
+        }
+    }
+
+    function startCeremony() {
+        document.getElementById('winner-report').innerText = document.getElementById('select-report').value;
+        document.getElementById('winner-king').innerText = document.getElementById('select-king').value;
+        document.getElementById('winner-think').innerText = document.getElementById('select-think').value;
+        showPage('ceremony-page');
+        shootConfetti();
+    }
+
+    function shootConfetti() {
+        var duration = 3 * 1000;
+        var end = Date.now() + duration;
+        (function frame() {
+            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FF9800', '#E91E63', '#03A9F4'] });
+            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FF9800', '#E91E63', '#03A9F4'] });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        }());
+    }
+
+    function nextMonth() {
+        const pwd = prompt("새로운 달 데이터를 시작합니다. 비밀번호를 입력하세요:");
+        if (pwd === TEACHER_PASSWORD) {
+            const newMonthName = prompt("새롭게 시작할 달의 이름을 적어주세요 (예: 2026년 7월):", getYearMonth());
+            if (newMonthName) {
+                currentMonth = newMonthName;
+                localStorage.setItem('healingCurrentMonth', currentMonth);
+                checkMonthDataExists(currentMonth);
+                alert(`${currentMonth} 데이터 수집이 시작되었습니다. 이전 데이터는 서버에 안전하게 보존됩니다.`);
+            }
+        }
+    }
+</script>
+</body>
+</html>
