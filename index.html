@@ -92,10 +92,9 @@
 </div>
 
 <script>
-    // ==========================================
-    // ★ 파이어베이스 설정값 붙여넣는 곳 ★
+    // 선생님의 파이어베이스 설정값이 완벽하게 적용되었습니다.
     const firebaseConfig = {
-      apiKey: "AIzaSyCniqJoax8n5owLR3aZ352HlDX-oxQ87pk",
+      apiKey: "AIzaSyCniqJoax8n5owLR3aZ352H1DX-oxQ87pk",
       authDomain: "healing-263grade1.firebaseapp.com",
       databaseURL: "https://healing-263grade1-default-rtdb.firebaseio.com",
       projectId: "healing-263grade1",
@@ -103,13 +102,12 @@
       messagingSenderId: "40388247841",
       appId: "1:40388247841:web:a2b4486be814e49f513e60"
     };
-    // ==========================================
 
     // 파이어베이스 초기화
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // 박성빈 학생이 맨 마지막 순서(21번)로 배치되었습니다.
+    // 박성빈 학생이 맨 마지막 번호(21번)로 완벽히 포함되었습니다.
     const students = [
         '김주이', '김지윤', '김하늘', '박시현', '오하솔', '이목운', 
         '장해린', '정다솜', '한세희', '김가람', '원이령', '이민욱', 
@@ -212,7 +210,6 @@
         renderChart();
     }
 
-    // 그래프에서도 명단 순서 그대로(성빈이가 맨 뒤에) 나오게 유기적으로 연동됩니다.
     function renderChart() {
         const selectedMonth = document.getElementById('month-selector').value;
         const data = globalData[selectedMonth];
