@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>우리 반 힐링수다날</title>
+    <!-- 외부 라이브러리: 차트, 팡파레, 파이어베이스(v8) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -93,15 +94,14 @@
 <script>
     // ==========================================
     // ★ 파이어베이스 설정값 붙여넣는 곳 ★
-    // 아래 괄호 {} 안의 내용을 2단계에서 복사한 코드로 교체하세요!
     const firebaseConfig = {
-  apiKey: "AIzaSyCniqJoax8n5owLR3aZ352HlDX-oxQ87pk",
-  authDomain: "healing-263grade1.firebaseapp.com",
-  databaseURL: "https://healing-263grade1-default-rtdb.firebaseio.com",
-  projectId: "healing-263grade1",
-  storageBucket: "healing-263grade1.firebasestorage.app",
-  messagingSenderId: "40388247841",
-  appId: "1:40388247841:web:a2b4486be814e49f513e60"
+      apiKey: "AIzaSyCniqJoax8n5owLR3aZ352HlDX-oxQ87pk",
+      authDomain: "healing-263grade1.firebaseapp.com",
+      databaseURL: "https://healing-263grade1-default-rtdb.firebaseio.com",
+      projectId: "healing-263grade1",
+      storageBucket: "healing-263grade1.firebasestorage.app",
+      messagingSenderId: "40388247841",
+      appId: "1:40388247841:web:a2b4486be814e49f513e60"
     };
     // ==========================================
 
@@ -109,25 +109,24 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // 기본 설정
+    // 박성빈 학생이 맨 마지막 순서(21번)로 배치되었습니다.
     const students = [
         '김주이', '김지윤', '김하늘', '박시현', '오하솔', '이목운', 
         '장해린', '정다솜', '한세희', '김가람', '원이령', '이민욱', 
-        '이서후', '이세율', '이지완', '정선우', '정하준', '최지원'
+        '이서후', '이세율', '이지완', '정선우', '정하준', '최지원', '박성빈'
     ];
     const TEACHER_PASSWORD = '1004';
     
     let currentCategory = '';
     let currentMonth = localStorage.getItem('healingCurrentMonth') || getYearMonth();
     let chartInstance = null;
-    let globalData = {}; // 서버에서 불러온 데이터를 저장할 변수
+    let globalData = {};
 
     function getYearMonth() {
         const d = new Date();
         return `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
     }
 
-    // 서버(Firebase) 실시간 데이터 연동
     database.ref('healingData').on('value', (snapshot) => {
         if (snapshot.exists()) {
             globalData = snapshot.val();
@@ -136,13 +135,11 @@
         }
         checkMonthDataExists(currentMonth);
         
-        // 데이터 보기 창이 열려있다면 그래프 실시간 업데이트
         if(!document.getElementById('data-page').classList.contains('hidden')) {
             renderChart();
         }
     });
 
-    // 해당 달의 데이터 구조가 없으면 생성하여 서버에 저장
     function checkMonthDataExists(month) {
         let updated = false;
         if (!globalData[month]) {
@@ -183,7 +180,6 @@
         showPage('student-list-page');
     }
 
-    // 서버(Firebase) 데이터 횟수 1 증가
     function addCount(student) {
         const currentCount = globalData[currentMonth][currentCategory][student] || 0;
         database.ref(`healingData/${currentMonth}/${currentCategory}/${student}`).set(currentCount + 1)
@@ -216,6 +212,7 @@
         renderChart();
     }
 
+    // 그래프에서도 명단 순서 그대로(성빈이가 맨 뒤에) 나오게 유기적으로 연동됩니다.
     function renderChart() {
         const selectedMonth = document.getElementById('month-selector').value;
         const data = globalData[selectedMonth];
