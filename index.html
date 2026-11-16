@@ -113,7 +113,20 @@
         '장해린', '정다솜', '한세희', '김가람', '원이령', '이민욱', 
         '이서후', '이세율', '이지완', '정선우', '정하준', '최지원', '박성빈'
     ];
-    const TEACHER_PASSWORD = '1004';
+    // 교사 비밀번호는 평문으로 두지 않고 SHA-256 해시로만 비교합니다.
+    const TEACHER_PW_SHA256 = '75992a5ac67ff644d3063976c2effd10bdd93fcc109798e3d5c1acf2e530d01a';
+
+    async function pwMatches(input) {
+        if (input === null || input === undefined) return false;
+        try {
+            const buf = new TextEncoder().encode(String(input));
+            const digest = await crypto.subtle.digest('SHA-256', buf);
+            const hex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+            return hex === TEACHER_PW_SHA256;
+        } catch (e) {
+            return false;
+        }
+    }
     
     let currentCategory = '';
     let currentMonth = localStorage.getItem('healingCurrentMonth') || getYearMonth();
@@ -139,21 +152,21 @@
     });
 
     function checkMonthDataExists(month) {
-        let updated = false;
-        if (!globalData[month]) {
-            globalData[month] = { '힐름보': {}, '힐링왕': {}, '생각왕': {} };
-            updated = true;
-        }
-        students.forEach(s => {
-            if(globalData[month]['힐름보'][s] === undefined) {
-                globalData[month]['힐름보'][s] = 0;
-                globalData[month]['힐링왕'][s] = 0;
-                globalData[month]['생각왕'][s] = 0;
-                updated = true;
-            }
+        // 전체 데이터를 통째로 덮어쓰지 않고, 비어 있는 칸만 0으로 채웁니다.
+        // (보안 규칙에서 통째 덮어쓰기를 막았기 때문에 개별 경로로만 씁니다)
+        if (!globalData[month]) globalData[month] = {};
+        const updates = {};
+        ['힐름보', '힐링왕', '생각왕'].forEach(cat => {
+            if (!globalData[month][cat]) globalData[month][cat] = {};
+            students.forEach(s => {
+                if (globalData[month][cat][s] === undefined) {
+                    globalData[month][cat][s] = 0;
+                    updates[`${month}/${cat}/${s}`] = 0;
+                }
+            });
         });
-        if (updated) {
-            database.ref('healingData').set(globalData);
+        if (Object.keys(updates).length > 0) {
+            database.ref('healingData').update(updates).catch(err => console.warn('초기 데이터 생성 실패:', err));
         }
     }
 
@@ -179,17 +192,21 @@
     }
 
     function addCount(student) {
-        const currentCount = globalData[currentMonth][currentCategory][student] || 0;
-        database.ref(`healingData/${currentMonth}/${currentCategory}/${student}`).set(currentCount + 1)
+        // 여러 명이 동시에 눌러도 1씩 정확히 올라가도록 트랜잭션으로 기록합니다.
+        const ref = database.ref(`healingData/${currentMonth}/${currentCategory}/${student}`);
+        ref.transaction(count => (count || 0) + 1)
             .then(() => {
                 alert(`${student} 학생에게 ${currentCategory} 추천이 완료되었습니다!`);
                 showPage('main-page');
+            })
+            .catch(() => {
+                alert('저장하지 못했어요. 잠시 후 다시 눌러 주세요.');
             });
     }
 
-    function openAdminPassword() {
+    async function openAdminPassword() {
         const pwd = prompt("선생님 비밀번호를 입력하세요:");
-        if (pwd === TEACHER_PASSWORD) {
+        if (await pwMatches(pwd)) {
             setupDataPage();
             showPage('data-page');
         } else if (pwd !== null) {
@@ -232,9 +249,9 @@
         });
     }
 
-    function openAwardSelection() {
+    async function openAwardSelection() {
         const pwd = prompt("선생님 비밀번호를 입력하세요 (시상식 준비):");
-        if (pwd === TEACHER_PASSWORD) {
+        if (await pwMatches(pwd)) {
             ['report', 'king', 'think'].forEach(id => {
                 const select = document.getElementById(`select-${id}`);
                 select.innerHTML = '';
@@ -267,9 +284,9 @@
         }());
     }
 
-    function nextMonth() {
+    async function nextMonth() {
         const pwd = prompt("새로운 달 데이터를 시작합니다. 비밀번호를 입력하세요:");
-        if (pwd === TEACHER_PASSWORD) {
+        if (await pwMatches(pwd)) {
             const newMonthName = prompt("새롭게 시작할 달의 이름을 적어주세요 (예: 2026년 7월):", getYearMonth());
             if (newMonthName) {
                 currentMonth = newMonthName;

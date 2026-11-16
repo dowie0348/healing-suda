@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "healingData": {
+      ".read": true,
+      "$month": {
+        ".validate": "$month.matches(/^[0-9]{4}년 [0-9]{1,2}월$/)",
+        "$category": {
+          ".validate": "$category === '힐름보' || $category === '힐링왕' || $category === '생각왕'",
+          "$student": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999",
+            ".write": "newData.isNumber() && (!data.exists() ? (newData.val() === 0 || newData.val() === 1) : newData.val() === data.val() + 1)"
+          }
+        }
+      }
+    }
+  }
+}
