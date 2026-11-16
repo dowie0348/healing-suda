@@ -3,7 +3,7 @@
     "healingData": {
       ".read": true,
       "$month": {
-        ".validate": "$month.matches(/^[0-9]{4}년 [0-9]{1,2}월$/)",
+        ".validate": "$month.matches(/^.{1,20}$/)",
         "$category": {
           ".validate": "$category === '힐름보' || $category === '힐링왕' || $category === '생각왕'",
           "$student": {
